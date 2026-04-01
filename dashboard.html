@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Smart Classroom Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Segoe UI';
+    background: #b6c186;
+    color: white;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    padding: 12px;
+    font-size: 22px;
+    background: linear-gradient(90deg,#e1de21,#4facfe);
+}
+
+/* Devices */
+.devices {
+    display: grid;
+    grid-template-columns: repeat(2,1fr);
+    gap: 15px;
+    padding: 15px;
+}
+
+/* Card */
+.device {
+    background:rgb(127, 146, 167);
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+/* Icons */
+.icon {
+    font-size: 28px;
+}
+
+/* Animations */
+.fan { animation: spin 2s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg);} }
+
+.light { color: yellow; text-shadow:0 0 10px yellow; }
+.ac { color: rgb(20, 179, 204); }
+.fridge { color: #1240ab; }
+
+/* Toggle */
+.toggle {
+    width: 45px;
+    height: 22px;
+    background: #333;
+    border-radius: 20px;
+    margin: 10px auto;
+    position: relative;
+    cursor: pointer;
+}
+.circle {
+    width: 18px;
+    height: 18px;
+    background: rgb(225, 230, 229);
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+.toggle.active { background: #15b32d; }
+.toggle.active .circle { transform: translateX(22px); }
+
+/* Power */
+.power {
+    font-size: 14px;
+    margin-top: 5px;
+    color: black;
+}
+
+/* Bottom Graph Section */
+.graph-section {
+    height: 180px;
+    overflow-y: auto;
+    padding: 10px 15px;
+}
+
+.gauge-box {
+    width: 250px;
+    margin: 20px auto;
+    position: relative;
+}
+
+.gauge-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -30%);
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+}
+
+canvas {
+    height: 100% !important;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">Smart Classroom Dashboard</div>
+
+
+<!-- Devices -->
+<div class="devices">
+
+    <!-- Light 1 -->
+    <div class="device">
+        <i class="fa-solid fa-lightbulb icon light"></i>
+        <div>Light 1</div>
+        <div class="toggle" onclick="toggle(this)"><div class="circle"></div></div>
+        <div class="power">Power Consumption: <span id="light1">20</span> W</div>
+    </div>
+
+    <!-- Light 2 -->
+    <div class="device">
+        <i class="fa-solid fa-lightbulb icon light"></i>
+        <div>Light 2</div>
+        <div class="toggle" onclick="toggle(this)"><div class="circle"></div></div>
+        <div class="power">Power Consumption: <span id="light2">22</span> W</div>
+    </div>
+
+    <!-- Light 3 -->
+    <div class="device">
+        <i class="fa-solid fa-lightbulb icon light"></i>
+        <div>Light 3</div>
+        <div class="toggle" onclick="toggle(this)"><div class="circle"></div></div>
+        <div class="power">Power Consumption: <span id="light3">18</span> W</div>
+    </div>
+
+    <!-- Light 4 -->
+    <div class="device">
+        <i class="fa-solid fa-lightbulb icon light"></i>
+        <div>Light 4</div>
+        <div class="toggle" onclick="toggle(this)"><div class="circle"></div></div>
+        <div class="power">Power Consumption: <span id="light4">25</span> W</div>
+    </div>
+
+    <!-- Fan 1 -->
+    <div class="device">
+        <i class="fa-solid fa-fan icon fan"></i>
+        <div>Fan 1</div>
+        <div class="toggle" onclick="toggle(this)"><div class="circle"></div></div>
+        <div class="power">Power Consumption: <span id="fan1">40</span> W</div>
+    </div>
+
+    <!-- Fan 2 -->
+    <div class="device">
+        <i class="fa-solid fa-fan icon fan"></i>
+        <div>Fan 2</div>
+        <div class="toggle" onclick="toggle(this)"><div class="circle"></div></div>
+        <div class="power">Power Consumption: <span id="fan2">45</span> W</div>
+    </div>
+
+</div>
+
+<div class="gauge-box">
+    <canvas id="gauge"></canvas>
+    <div class="gauge-text">
+        <span id="totalPower">0</span> W
+    </div>
+</div>
+
+<script>
+// Chart
+const ctx = document.getElementById('gauge').getContext('2d');
+
+let gaugeChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+        datasets: [{
+            data: [0, 300], // current , remaining
+            backgroundColor: ["#00f2fe", "#1e293b"],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        rotation: -90,
+        circumference: 180,
+        cutout: "70%",
+        plugins: { legend: { display: false } }
+    }
+});
+
+// Auto update
+setInterval(()=>{
+
+    increase("light1",2);
+    increase("light2",2);
+    increase("light3",2);
+    increase("light4",2);
+
+    increase("fan1",3);
+    increase("fan2",3);
+
+    let total =
+    getVal("light1") +
+    getVal("light2") +
+    getVal("light3") +
+    getVal("light4") +
+    getVal("fan1") +
+    getVal("fan2");
+
+    // Update gauge
+    gaugeChart.data.datasets[0].data = [total, 300-total];
+    gaugeChart.update();
+
+    document.getElementById("totalPower").innerText = total;
+
+},2000);
+
+function getVal(id){
+    return parseInt(document.getElementById(id).innerText);
+}
+
+function increase(id,val){
+    let el = document.getElementById(id);
+    el.innerText = getVal(id) + Math.floor(Math.random()*val);
+}
+
+// Toggle
+function toggle(el){
+    el.classList.toggle("active");
+}
+</script>
+
+</body>
+</html>
