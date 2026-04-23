@@ -1,27 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
 import DeviceCard from '../components/DeviceCard';
 import PowerGauge from '../components/PowerGauge';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
-
-  // Mock hourly data for the report
-  const hourlyReport = Array.from({ length: 12 }, (_, i) => {
-    const hour = (23 - i) % 12 || 12;
-    const ampm = (23 - i) >= 12 ? 'PM' : 'AM';
-    return {
-      time: `${hour}:00 ${ampm}`,
-      avgPower: 120 + Math.floor(Math.random() * 80),
-      peakPower: 200 + Math.floor(Math.random() * 50),
-      status: Math.random() > 0.8 ? 'High Usage' : 'Normal',
-      efficiency: (85 + Math.random() * 10).toFixed(1) + '%'
-    };
-  });
+  const [reportData, setReportData] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const fetchDevices = useCallback(async () => {
     try {
@@ -36,18 +27,33 @@ export default function Dashboard() {
     }
   }, []);
 
+  const fetchReport = useCallback(async () => {
+    try {
+      const { data } = await API.get('/api/devices/reports/hourly');
+      setReportData(data);
+    } catch (err) {
+      console.error('Failed to fetch report data');
+    }
+  }, []);
+
   useEffect(() => {
     fetchDevices();
     const interval = setInterval(fetchDevices, 3000);
     return () => clearInterval(interval);
   }, [fetchDevices]);
 
+  useEffect(() => {
+    if (activeTab === 'report') {
+      fetchReport();
+    }
+  }, [activeTab, fetchReport]);
+
   const handleToggle = async (deviceId) => {
     const device = devices.find(d => d._id === deviceId);
     if (!device) return;
 
     try {
-      const { data } = await API.post(`/api/devices/${deviceId}/update`, { isOn: !device.isOn });
+      const { data } = await API.put(`/api/devices/${deviceId}`, { isOn: !device.isOn });
       setDevices((prev) => prev.map((d) => (d._id === deviceId ? data : d)));
     } catch (err) {
       setError('Failed to update device.');
@@ -70,8 +76,14 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
+      {/* Sidebar overlay (mobile) */}
+      <div
+        className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
       {/* ─── Sidebar ─── */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-brand">
           <div className="sidebar-logo-wrap">🏫</div>
           <div className="sidebar-brand-text">
@@ -84,16 +96,24 @@ export default function Dashboard() {
           <div className="nav-section-label">Main Items</div>
           <div 
             className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}
           >
             <span className="nav-icon">⚡</span> Dashboard
           </div>
 
           <div 
             className={`nav-item ${activeTab === 'report' ? 'active' : ''}`}
-            onClick={() => setActiveTab('report')}
+            onClick={() => { setActiveTab('report'); setSidebarOpen(false); }}
           >
             <span className="nav-icon">📊</span> Power Report
+          </div>
+
+          <div 
+            className="nav-item"
+            id="nav-analytics"
+            onClick={() => { setSidebarOpen(false); navigate('/analytics'); }}
+          >
+            <span className="nav-icon">🌡️</span> Analytics
           </div>
         </nav>
       </aside>
@@ -102,13 +122,25 @@ export default function Dashboard() {
       <main className="dash-main">
         {/* Top Bar */}
         <div className="dash-topbar">
-          <div className="topbar-title">
-            <h1 className="topbar-heading">
-              {activeTab === 'dashboard' ? 'Classroom Overview' : 'Hourly Power Report'}
-            </h1>
-            <p className="topbar-sub">
-              {activeTab === 'dashboard' ? 'Real-time device management & monitoring' : 'Historical energy consumption metrics'}
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Hamburger — visible only on mobile */}
+            <button
+              id="hamburger-btn"
+              className="hamburger-btn"
+              onClick={() => setSidebarOpen((o) => !o)}
+              aria-label="Toggle sidebar"
+            >
+              <span /><span /><span />
+            </button>
+
+            <div className="topbar-title">
+              <h1 className="topbar-heading">
+                {activeTab === 'dashboard' ? 'Classroom Overview' : 'Hourly Power Report'}
+              </h1>
+              <p className="topbar-sub">
+                {activeTab === 'dashboard' ? 'Real-time device management & monitoring' : 'Historical energy consumption metrics'}
+              </p>
+            </div>
           </div>
           <div className="topbar-right">
             {lastUpdated && (
@@ -179,7 +211,7 @@ export default function Dashboard() {
                         {devices.filter(d => d.type === 'light').length} Lights / {devices.filter(d => d.type === 'fan').length} Fans
                       </span>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    {/* <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={() => handleBulkToggle(true)} className="btn-primary">All ON</button>
                       <button 
                         onClick={() => handleBulkToggle(false)} 
@@ -187,7 +219,7 @@ export default function Dashboard() {
                       >
                         All OFF
                       </button>
-                    </div>
+                    </div> */}
                   </div>
                   <div className="devices-grid">
                     {devices.map((device) => (
@@ -217,11 +249,11 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {hourlyReport.map((row, idx) => (
-                    <tr key={idx}>
-                      <td>{row.time}</td>
-                      <td>{row.avgPower} W</td>
-                      <td>{row.peakPower} W</td>
+                  {reportData.map((row) => (
+                    <tr key={row._id}>
+                      <td>{new Date(row.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                      <td>{row.totalPower} W</td>
+                      <td>{Math.floor(row.totalPower * 1.2)} W</td>
                       <td>{row.efficiency}</td>
                       <td>
                         <span className={`status-pill ${row.status === 'High Usage' ? 'high' : 'normal'}`}>
@@ -230,6 +262,13 @@ export default function Dashboard() {
                       </td>
                     </tr>
                   ))}
+                  {reportData.length === 0 && (
+                    <tr>
+                      <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                        No historical data available yet.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

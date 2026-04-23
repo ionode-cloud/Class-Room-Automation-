@@ -1,6 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const Device = require('../models/Device');
+const PowerHistory = require('../models/PowerHistory');
+
+// @route  GET /api/devices/reports/hourly
+// @desc   Get historical hourly power logs
+// @access Public
+router.get('/reports/hourly', async (req, res) => {
+  try {
+    const logs = await PowerHistory.find().sort({ timestamp: -1 }).limit(24);
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 const { protect } = require('../middleware/authMiddleware');
 
 // @route  GET /api/devices
@@ -52,6 +65,35 @@ router.post('/:id/update', async (req, res) => {
     if (isOn !== undefined) device.isOn = isOn;
     device.lastUpdated = new Date();
     await device.save();
+
+    res.json(device);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// @route  PUT /api/devices/:id
+// @desc   Update device details (name, type, power, status)
+// @access Public
+router.put('/:id', async (req, res) => {
+  try {
+    const { name, type, powerConsumption, isOn } = req.body;
+    const updateData = { lastUpdated: new Date() };
+
+    if (name !== undefined) updateData.name = name;
+    if (type !== undefined) updateData.type = type;
+    if (powerConsumption !== undefined) updateData.powerConsumption = powerConsumption;
+    if (isOn !== undefined) updateData.isOn = isOn;
+
+    const device = await Device.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    );
+
+    if (!device) {
+      return res.status(404).json({ message: 'Device not found' });
+    }
 
     res.json(device);
   } catch (err) {
