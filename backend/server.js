@@ -15,7 +15,8 @@ const app = express();
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   // Allow the frontend origin
-  if (origin === 'http://localhost:5173') {
+  const allowedOrigins = ['http://localhost:5173', 'https://classroomauto.ionode.cloud'];
+  if (allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
   }
   res.header('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
