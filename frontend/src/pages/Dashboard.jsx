@@ -163,7 +163,7 @@ export default function Dashboard() {
                   <span className="stat-icon">🔌</span>
                 </div>
                 <div className="stat-num">{devices.length}</div>
-                <div className="stat-trend">Lights & Fans monitored</div>
+                <div className="stat-trend">Mobile & Other devices monitored</div>
               </div>
 
               <div className="stat-card active">
@@ -208,7 +208,7 @@ export default function Dashboard() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <h2 className="section-title">📱 Devices</h2>
                       <span className="section-count">
-                        {devices.filter(d => d.type === 'light').length} Lights / {devices.filter(d => d.type === 'fan').length} Fans
+                        {devices.filter(d => d.type === 'mobile' || d.type === 'light').length} Mobile Devices / {devices.filter(d => d.type === 'other' || d.type === 'fan').length} Other Devices
                       </span>
                     </div>
                     {/* <div style={{ display: 'flex', gap: '8px' }}>

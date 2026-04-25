@@ -1,9 +1,11 @@
 export default function DeviceCard({ device, onToggle }) {
   const isLight = device.type === 'light';
   const isFan   = device.type === 'fan';
+  const isMobile = device.type === 'mobile';
+  const isOther = device.type === 'other';
 
-  const iconClass = isLight ? 'fa-solid fa-lightbulb icon-light' : isFan ? 'fa-solid fa-fan icon-fan' : 'fa-solid fa-snowflake icon-ac';
-  const colorClass = isLight ? 'card-light' : isFan ? 'card-fan' : 'card-ac';
+  const iconClass = isLight ? 'fa-solid fa-lightbulb icon-light' : isFan ? 'fa-solid fa-fan icon-fan' : isMobile ? 'fa-solid fa-mobile-screen icon-mobile' : isOther ? 'fa-solid fa-plug icon-other' : 'fa-solid fa-snowflake icon-ac';
+  const colorClass = isLight ? 'card-light' : isFan ? 'card-fan' : isMobile ? 'card-mobile' : isOther ? 'card-other' : 'card-ac';
 
   return (
     <div

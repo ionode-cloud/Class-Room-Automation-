@@ -9,7 +9,7 @@ const deviceSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['light', 'fan', 'ac', 'projector'],
+      enum: ['light', 'fan', 'ac', 'projector', 'mobile', 'other'],
       required: true,
     },
     isOn: {
