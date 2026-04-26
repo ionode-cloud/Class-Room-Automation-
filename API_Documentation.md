@@ -51,44 +51,62 @@ Authenticate and receive a JWT token.
 
 ---
 
-## 💡 Device Management
+## 💡 Device Management & Sync (All-in-One)
 
-### 1. List All Devices
+### 1. Get All Classroom Data
 `GET /api/devices`
 
-Retrieve the current state of all devices in the classroom.
+Retrieve the current state of all fans, lights, devices, total power consumption, and latest sensor readings in a single unified response.
 
 **Success Response:**
 ```json
 {
+  "id": "classroom_1",
   "devices": [
     {
       "_id": "69d6ad27...",
-      "name": "Light 1",
-      "type": "light",
-      "isOn": false,
-      "powerConsumption": 20,
-      "lastUpdated": "2026-04-20T18:00:00Z"
+      "name": "Fan 1",
+      "type": "fan",
+      "isOn": true,
+      "powerConsumption": 45
     }
   ],
-  "timestamp": "2026-04-20T18:05:00Z"
+  "fans": [ ... ],
+  "lights": [ ... ],
+  "others": [ ... ],
+  "totalPowerConsumption": 45,
+  "sensorData": {
+    "temperature": 24.5,
+    "humidity": 55.2
+  },
+  "timestamp": "2026-04-26T12:00:00Z"
 }
 ```
 
 ---
 
-### 2. Add New Device
+### 2. Create Device OR Sync All Data
 `POST /api/devices`
 
-Manually register a new device to the dashboard.
+This endpoint serves a dual purpose:
+1. **Legacy mode**: Register a single new device by sending `{ "name": "Fan", "type": "fan" }`.
+2. **Sync mode**: Update sensors, fans, and lights in a single API call (useful for ESP32/Arduino integration).
 
-**Request Body:**
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `name` | String | Yes | Display name of the device |
-| `type` | String | Yes | `light`, `fan`, or `ac` |
-| `powerConsumption` | Number | No | Rated wattage |
-| `isOn` | Boolean | No | Initial state (default: false) |
+**Request Body (Sync Mode - All fields optional):**
+```json
+{
+  "sensorData": {
+    "temperature": 26.1,
+    "humidity": 50.0
+  },
+  "fans": [
+    { "_id": "YOUR_FAN_ID_HERE", "isOn": true, "powerConsumption": 45 }
+  ],
+  "lights": [
+    { "_id": "YOUR_LIGHT_ID_HERE", "isOn": false }
+  ]
+}
+```
 
 ---
 
@@ -176,10 +194,48 @@ Model an external sensor updating the power reading of a specific device.
 ---
 
 ## 🛠️ Testing with Postman
-1. Set the request type (e.g., `POST`).
-2. Enter the URL (e.g., `http://localhost:5000/api/devices/bulk-update`).
-3. In the **Body** tab, select **raw** and set the format to **JSON**.
-4. Paste your JSON payload and hit **Send**.
+
+### Basic Steps
+1. Open Postman and click **New > HTTP Request**.
+2. Enter the URL (e.g., `http://localhost:5000/api/devices`).
+3. Follow the specific instructions below based on the method:
+
+### 🟢 GET Requests (Fetching Data)
+*Used for reading data from the server. (e.g., `GET /api/devices`)*
+- **Setup**: Select **GET** from the HTTP Method dropdown next to the URL.
+- **Body**: No body is required for GET requests.
+- **Action**: Click the blue **Send** button.
+- **Result**: You will see the retrieved JSON data in the lower response pane.
+
+### 🟡 POST Requests (Creating or Syncing Data)
+*Used for sending new data to the server. (e.g., `POST /api/devices`)*
+- **Setup**: Select **POST** from the dropdown.
+- **Body**: Go to the **Body** tab below the URL bar.
+- Select the **raw** radio button.
+- At the end of that row, change the format dropdown from `Text` to **JSON**.
+- Enter your JSON object in the text area. Example:
+  ```json
+  { "name": "Fan 4", "type": "fan", "isOn": true }
+  ```
+- **Action**: Click **Send**.
+
+### 🟠 PUT Requests (Updating Existing Data)
+*Used for replacing or updating an existing resource. (e.g., `PUT /api/devices/:id`)*
+- **Setup**: Select **PUT** from the dropdown. 
+- **URL**: Ensure you replace `:id` in the URL with an actual MongoDB `_id` string. Example: `http://localhost:5000/api/devices/64d6ad...`
+- **Body**: Go to the **Body** tab -> select **raw** -> format **JSON**.
+- Enter your updated fields. Example:
+  ```json
+  { "isOn": false, "powerConsumption": 0 }
+  ```
+- **Action**: Click **Send**.
+
+### 🔴 DELETE Requests (Removing Data)
+*Used for removing a resource from the database.*
+- **Setup**: Select **DELETE** from the dropdown.
+- **URL**: Ensure the URL contains the ID of the item you want to remove. Example: `http://localhost:5000/api/devices/64d6ad...`
+- **Body**: Usually no body is required.
+- **Action**: Click **Send**.
 
 ---
 

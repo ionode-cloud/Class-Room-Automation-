@@ -17,13 +17,28 @@ router.get('/reports/hourly', async (req, res) => {
 const { protect } = require('../middleware/authMiddleware');
 
 // @route  GET /api/devices
-// @desc   Get all devices
+// @desc   Get all devices and complete classroom status
 // @access Protected
 router.get('/', async (req, res) => {
   try {
+    const SensorHistory = require('../models/SensorHistory');
     const devices = await Device.find().sort({ type: 1, name: 1 });
+    const latestSensor = await SensorHistory.findOne().sort({ timestamp: -1 }).lean();
+
+    const fans = devices.filter(d => d.type === 'fan');
+    const lights = devices.filter(d => d.type === 'light');
+    const others = devices.filter(d => d.type !== 'fan' && d.type !== 'light');
+    
+    const totalPowerConsumption = devices.reduce((sum, d) => d.isOn ? sum + d.powerConsumption : sum, 0);
+
     res.json({
-      devices,
+      id: "classroom_1",
+      devices, // Keeping 'devices' to ensure the frontend doesn't break
+      fans,
+      lights,
+      others,
+      totalPowerConsumption,
+      sensorData: latestSensor || { temperature: 0, humidity: 0 },
       timestamp: new Date()
     });
   } catch (err) {
@@ -32,19 +47,81 @@ router.get('/', async (req, res) => {
 });
 
 // @route  POST /api/devices
-// @desc   Create a new dummy device
+// @desc   Create a new dummy device OR sync all classroom data
 // @access Protected
 router.post('/', async (req, res) => {
   try {
-    const { name, type, powerConsumption, isOn } = req.body;
-    const newDevice = new Device({
-      name,
-      type,
-      powerConsumption: powerConsumption || 0,
-      isOn: isOn || false
+    const { name, type, powerConsumption, isOn, sensorData, fans, lights } = req.body;
+    
+    // If it's a legacy create device request
+    if (name && type) {
+      const newDevice = new Device({
+        name,
+        type,
+        powerConsumption: powerConsumption || 0,
+        isOn: isOn || false
+      });
+      const savedDevice = await newDevice.save();
+      return res.status(201).json(savedDevice);
+    }
+
+    // Otherwise, treat it as a Sync Data request
+    const SensorHistory = require('../models/SensorHistory');
+
+    // 1. Update Sensor Data if provided
+    if (sensorData && sensorData.temperature !== undefined && sensorData.humidity !== undefined) {
+      await SensorHistory.create({
+        temperature: sensorData.temperature,
+        humidity: sensorData.humidity
+      });
+    }
+
+    // 2. Update Fans if provided
+    if (fans && Array.isArray(fans)) {
+      for (const f of fans) {
+        if (f._id) {
+          const updateData = {};
+          if (f.isOn !== undefined) updateData.isOn = f.isOn;
+          if (f.powerConsumption !== undefined) updateData.powerConsumption = f.powerConsumption;
+          updateData.lastUpdated = new Date();
+          await Device.findByIdAndUpdate(f._id, updateData);
+        }
+      }
+    }
+
+    // 3. Update Lights if provided
+    if (lights && Array.isArray(lights)) {
+      for (const l of lights) {
+        if (l._id) {
+          const updateData = {};
+          if (l.isOn !== undefined) updateData.isOn = l.isOn;
+          if (l.powerConsumption !== undefined) updateData.powerConsumption = l.powerConsumption;
+          updateData.lastUpdated = new Date();
+          await Device.findByIdAndUpdate(l._id, updateData);
+        }
+      }
+    }
+
+    // 4. Fetch the updated state to return
+    const devices = await Device.find().sort({ type: 1, name: 1 });
+    const latestSensor = await SensorHistory.findOne().sort({ timestamp: -1 }).lean();
+
+    const updatedFans = devices.filter(d => d.type === 'fan');
+    const updatedLights = devices.filter(d => d.type === 'light');
+    const others = devices.filter(d => d.type !== 'fan' && d.type !== 'light');
+    const totalPower = devices.reduce((sum, d) => d.isOn ? sum + d.powerConsumption : sum, 0);
+
+    res.json({
+      id: "classroom_1",
+      message: "Data synced successfully",
+      devices, // Included for frontend backward compatibility
+      fans: updatedFans,
+      lights: updatedLights,
+      others,
+      totalPowerConsumption: totalPower,
+      sensorData: latestSensor || { temperature: 0, humidity: 0 },
+      timestamp: new Date()
     });
-    const savedDevice = await newDevice.save();
-    res.status(201).json(savedDevice);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -96,6 +173,21 @@ router.put('/:id', async (req, res) => {
     }
 
     res.json(device);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// @route  DELETE /api/devices/:id
+// @desc   Delete a device
+// @access Public
+router.delete('/:id', async (req, res) => {
+  try {
+    const device = await Device.findByIdAndDelete(req.params.id);
+    if (!device) {
+      return res.status(404).json({ message: 'Device not found' });
+    }
+    res.json({ message: 'Device deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
