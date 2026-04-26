@@ -12,24 +12,18 @@ const sensorRoutes = require('./routes/sensorRoutes');
 const app = express();
 
 // Middleware
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  // Allow the frontend origin
-  const allowedOrigins = ['http://localhost:5173', 'https://classroomauto.ionode.cloud'];
-  if (allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24h
-
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  next();
-});
+app.use(cors({
+  origin: function (origin, callback) {
+    const allowedOrigins = ['http://localhost:5173', 'https://classroomauto.ionode.cloud'];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS']
+}));
 
 app.use(express.json());
 
