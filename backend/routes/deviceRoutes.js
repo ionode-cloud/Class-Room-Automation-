@@ -33,10 +33,7 @@ router.get('/', async (req, res) => {
 
     res.json({
       id: "classroom_1",
-      devices, // Keeping 'devices' to ensure the frontend doesn't break
-      fans,
-      lights,
-      others,
+      devices, 
       totalPowerConsumption,
       sensorData: latestSensor || { temperature: 0, humidity: 0 },
       timestamp: new Date()
@@ -106,18 +103,12 @@ router.post('/', async (req, res) => {
     const devices = await Device.find().sort({ type: 1, name: 1 });
     const latestSensor = await SensorHistory.findOne().sort({ timestamp: -1 }).lean();
 
-    const updatedFans = devices.filter(d => d.type === 'fan');
-    const updatedLights = devices.filter(d => d.type === 'light');
-    const others = devices.filter(d => d.type !== 'fan' && d.type !== 'light');
     const totalPower = devices.reduce((sum, d) => d.isOn ? sum + d.powerConsumption : sum, 0);
 
     res.json({
       id: "classroom_1",
       message: "Data synced successfully",
-      devices, // Included for frontend backward compatibility
-      fans: updatedFans,
-      lights: updatedLights,
-      others,
+      devices,
       totalPowerConsumption: totalPower,
       sensorData: latestSensor || { temperature: 0, humidity: 0 },
       timestamp: new Date()

@@ -71,9 +71,6 @@ Retrieve the current state of all fans, lights, devices, total power consumption
       "powerConsumption": 45
     }
   ],
-  "fans": [ ... ],
-  "lights": [ ... ],
-  "others": [ ... ],
   "totalPowerConsumption": 45,
   "sensorData": {
     "temperature": 24.5,
